@@ -48,3 +48,5 @@ export type OfflineDataset = {
   serviceOrder: ServiceId[];
   services: Record<ServiceId, OfflineService>;
 };
+
+export type ThemeMode = "system" | "light" | "dark";

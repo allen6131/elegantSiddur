@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 import type { OfflineService } from "../data/types";
-import { colors, serviceColors } from "../theme/colors";
+import { serviceColors } from "../theme/colors";
 import { spacing } from "../theme/spacing";
 import { typography } from "../theme/typography";
 
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.heading,
-    color: colors.surface,
+    color: "#FFFFFF",
   },
   heTitle: {
     ...typography.subheading,

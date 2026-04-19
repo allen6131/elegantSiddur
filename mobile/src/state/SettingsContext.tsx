@@ -7,29 +7,36 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { Appearance } from 'react-native';
+import type { DisplayMode, ThemeMode } from '../data/types';
 
 const STORAGE_KEY = 'siddur.settings.v1';
 
-export type LanguageMode = 'hebrew' | 'english' | 'bilingual';
-
 export type SettingsState = {
   fontScale: number;
-  languageMode: LanguageMode;
+  languageMode: DisplayMode;
   showNikud: boolean;
+  showEnglish: boolean;
+  themeMode: ThemeMode;
 };
 
 const defaultSettings: SettingsState = {
   fontScale: 1,
   languageMode: 'bilingual',
   showNikud: true,
+  showEnglish: true,
+  themeMode: 'system',
 };
 
 type SettingsContextValue = {
   settings: SettingsState;
   isHydrated: boolean;
+  effectiveTheme: ThemeMode;
   setFontScale: (fontScale: number) => void;
-  setLanguageMode: (languageMode: LanguageMode) => void;
+  setLanguageMode: (languageMode: DisplayMode) => void;
   setShowNikud: (showNikud: boolean) => void;
+  setShowEnglish: (showEnglish: boolean) => void;
+  setThemeMode: (themeMode: ThemeMode) => void;
   resetSettings: () => void;
 };
 
@@ -40,6 +47,23 @@ const clampFontScale = (fontScale: number) => Math.min(1.8, Math.max(0.8, fontSc
 export function SettingsProvider({ children }: React.PropsWithChildren) {
   const [settings, setSettings] = useState<SettingsState>(defaultSettings);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [deviceTheme, setDeviceTheme] = useState<ThemeMode>('light');
+
+  useEffect(() => {
+    const readCurrent = () => {
+      const scheme = Appearance.getColorScheme();
+      setDeviceTheme(scheme === 'dark' ? 'dark' : 'light');
+    };
+
+    readCurrent();
+    const subscription = Appearance.addChangeListener((next) => {
+      setDeviceTheme(next.colorScheme === 'dark' ? 'dark' : 'light');
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -58,6 +82,8 @@ export function SettingsProvider({ children }: React.PropsWithChildren) {
           fontScale: clampFontScale(parsed.fontScale ?? defaultSettings.fontScale),
           languageMode: parsed.languageMode ?? defaultSettings.languageMode,
           showNikud: parsed.showNikud ?? defaultSettings.showNikud,
+          showEnglish: parsed.showEnglish ?? defaultSettings.showEnglish,
+          themeMode: parsed.themeMode ?? defaultSettings.themeMode,
         });
       } catch {
         // ignore hydration errors and use defaults
@@ -90,7 +116,7 @@ export function SettingsProvider({ children }: React.PropsWithChildren) {
     }));
   }, []);
 
-  const setLanguageMode = useCallback((languageMode: LanguageMode) => {
+  const setLanguageMode = useCallback((languageMode: DisplayMode) => {
     setSettings((current) => ({
       ...current,
       languageMode,
@@ -104,20 +130,60 @@ export function SettingsProvider({ children }: React.PropsWithChildren) {
     }));
   }, []);
 
+  const setShowEnglish = useCallback((showEnglish: boolean) => {
+    setSettings((current) => {
+      const nextMode =
+        !showEnglish && current.languageMode === 'english'
+          ? 'hebrew'
+          : !showEnglish && current.languageMode === 'bilingual'
+          ? 'hebrew'
+          : current.languageMode;
+
+      return {
+        ...current,
+        showEnglish,
+        languageMode: nextMode,
+      };
+    });
+  }, []);
+
+  const setThemeMode = useCallback((themeMode: ThemeMode) => {
+    setSettings((current) => ({
+      ...current,
+      themeMode,
+    }));
+  }, []);
+
   const resetSettings = useCallback(() => {
     setSettings(defaultSettings);
   }, []);
+
+  const effectiveTheme =
+    settings.themeMode === 'system' ? deviceTheme : settings.themeMode;
 
   const value = useMemo(
     () => ({
       settings,
       isHydrated,
+      effectiveTheme,
       setFontScale,
       setLanguageMode,
       setShowNikud,
+      setShowEnglish,
+      setThemeMode,
       resetSettings,
     }),
-    [isHydrated, resetSettings, setFontScale, setLanguageMode, setShowNikud, settings]
+    [
+      effectiveTheme,
+      isHydrated,
+      resetSettings,
+      setFontScale,
+      setLanguageMode,
+      setShowEnglish,
+      setShowNikud,
+      setThemeMode,
+      settings,
+    ]
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

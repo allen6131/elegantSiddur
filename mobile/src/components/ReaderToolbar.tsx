@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "../theme/colors";
+import { useThemeColors } from "../theme/useThemeColors";
 import { spacing } from "../theme/spacing";
 
 type ReaderToolbarProps = {
@@ -19,6 +19,9 @@ export function ReaderToolbar({
   onGoNext,
   onToggleBookmark,
 }: ReaderToolbarProps) {
+  const themeColors = useThemeColors();
+  const styles = makeStyles(themeColors);
+
   return (
     <View style={styles.container}>
       <Pressable
@@ -56,7 +59,8 @@ export function ReaderToolbar({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
+  StyleSheet.create({
   container: {
     flexDirection: "row",
     gap: spacing.xs,
@@ -97,4 +101,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.accent,
   },
-});
+  });

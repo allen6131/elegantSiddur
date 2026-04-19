@@ -1,4 +1,21 @@
-export const colors = {
+import type { ThemeMode } from "../data/types";
+
+export type ThemeColors = {
+  background: string;
+  surface: string;
+  surfaceAlt: string;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  border: string;
+  accent: string;
+  accentSoft: string;
+  success: string;
+  danger: string;
+  hebrewText: string;
+};
+
+export const lightColors: ThemeColors = {
   background: "#F7F7FB",
   surface: "#FFFFFF",
   surfaceAlt: "#F1F3FA",
@@ -12,6 +29,27 @@ export const colors = {
   danger: "#DC2626",
   hebrewText: "#0F172A",
 };
+
+export const darkColors: ThemeColors = {
+  background: "#0B1220",
+  surface: "#111827",
+  surfaceAlt: "#1F2937",
+  textPrimary: "#F9FAFB",
+  textSecondary: "#D1D5DB",
+  textMuted: "#9CA3AF",
+  border: "#374151",
+  accent: "#60A5FA",
+  accentSoft: "#1E3A8A",
+  success: "#4ADE80",
+  danger: "#F87171",
+  hebrewText: "#F3F4F6",
+};
+
+export function getThemeColors(themeMode: ThemeMode): ThemeColors {
+  return themeMode === "dark" ? darkColors : lightColors;
+}
+
+export const colors = lightColors;
 
 export const serviceColors = {
   shacharit: "#3B82F6",

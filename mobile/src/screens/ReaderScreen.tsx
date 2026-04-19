@@ -8,14 +8,17 @@ import { getServiceData } from "../data/loader";
 import { useBookmarks } from "../state/BookmarksContext";
 import { useRecents } from "../state/RecentsContext";
 import { useSettings } from "../state/SettingsContext";
-import { colors } from "../theme/colors";
+import { useThemeColors } from "../theme/useThemeColors";
 import { spacing } from "../theme/spacing";
 import { RootStackParamList } from "../navigation/types";
 import { typography } from "../theme/typography";
+import type { ThemeColors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Reader">;
 
 export function ReaderScreen({ navigation, route }: Props) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { serviceId, sectionId } = route.params;
   const service = getServiceData(serviceId);
 
@@ -31,6 +34,9 @@ export function ReaderScreen({ navigation, route }: Props) {
   const canGoNext = sectionIndex < service.sections.length - 1 && sectionIndex >= 0;
 
   const bookmarkActive = isBookmarked(section.id);
+  const readerLanguageOptions = settings.showEnglish
+    ? (["hebrew", "english", "bilingual"] as const)
+    : (["hebrew"] as const);
 
   useMemo(() => {
     void openRecent({
@@ -89,7 +95,7 @@ export function ReaderScreen({ navigation, route }: Props) {
         <View style={styles.readerControls}>
           <Text style={styles.controlsLabel}>Language</Text>
           <View style={styles.modeGroup}>
-            {(["hebrew", "english", "bilingual"] as const).map((modeOption) => {
+            {readerLanguageOptions.map((modeOption) => {
               const isActive = settings.languageMode === modeOption;
               return (
                 <Pressable
@@ -137,7 +143,14 @@ export function ReaderScreen({ navigation, route }: Props) {
           renderItem={({ item }) => (
             <ReaderSegment
               segment={item}
-              mode={settings.languageMode}
+              mode={
+                settings.showEnglish
+                  ? settings.languageMode
+                  : settings.languageMode === "english" ||
+                    settings.languageMode === "bilingual"
+                  ? "hebrew"
+                  : settings.languageMode
+              }
               fontScale={settings.fontScale}
               showNikud={settings.showNikud}
             />
@@ -183,7 +196,8 @@ export function ReaderScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
@@ -349,4 +363,4 @@ const styles = StyleSheet.create({
   navButtonCenterText: {
     color: colors.textPrimary,
   },
-});
+  });

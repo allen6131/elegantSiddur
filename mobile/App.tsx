@@ -1,24 +1,40 @@
 import { StatusBar } from "expo-status-bar";
-import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
+import { NavigationContainer, DarkTheme, DefaultTheme } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { BookmarksProvider } from "./src/state/BookmarksContext";
 import { RecentsProvider } from "./src/state/RecentsContext";
-import { SettingsProvider } from "./src/state/SettingsContext";
+import { SettingsProvider, useSettings } from "./src/state/SettingsContext";
 import { RootNavigator } from "./src/navigation/RootNavigator";
-import { colors } from "./src/theme/colors";
+import { useMemo } from "react";
+import { useThemeColors } from "./src/theme/useThemeColors";
 
-const navTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: colors.background,
-    card: colors.surface,
-    text: colors.textPrimary,
-    border: colors.border,
-    primary: colors.accent,
-    notification: colors.accent,
-  },
-};
+function AppWithProviders() {
+  const { effectiveTheme } = useSettings();
+  const palette = useThemeColors();
+  const navTheme = useMemo(
+    () => ({
+      ...(effectiveTheme === "dark" ? DarkTheme : DefaultTheme),
+      dark: effectiveTheme === "dark",
+      colors: {
+        ...(effectiveTheme === "dark" ? DarkTheme.colors : DefaultTheme.colors),
+        background: palette.background,
+        card: palette.surface,
+        text: palette.textPrimary,
+        border: palette.border,
+        primary: palette.accent,
+        notification: palette.accent,
+      },
+    }),
+    [effectiveTheme, palette],
+  );
+
+  return (
+    <NavigationContainer theme={navTheme}>
+      <StatusBar style={effectiveTheme === "dark" ? "light" : "dark"} />
+      <RootNavigator />
+    </NavigationContainer>
+  );
+}
 
 export default function App() {
   return (
@@ -26,10 +42,7 @@ export default function App() {
       <SettingsProvider>
         <BookmarksProvider>
           <RecentsProvider>
-            <NavigationContainer theme={navTheme}>
-              <StatusBar style="dark" />
-              <RootNavigator />
-            </NavigationContainer>
+            <AppWithProviders />
           </RecentsProvider>
         </BookmarksProvider>
       </SettingsProvider>

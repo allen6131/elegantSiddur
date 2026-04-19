@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { OfflineSection } from "../data/types";
-import { colors } from "../theme/colors";
+import { useThemeColors } from "../theme/useThemeColors";
 import { spacing } from "../theme/spacing";
 import { typography } from "../theme/typography";
 
@@ -10,6 +10,9 @@ type SectionRowProps = {
 };
 
 export function SectionRow({ section, onPress }: SectionRowProps) {
+  const themeColors = useThemeColors();
+  const styles = makeStyles(themeColors);
+
   return (
     <Pressable
       onPress={onPress}
@@ -25,43 +28,44 @@ export function SectionRow({ section, onPress }: SectionRowProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    marginBottom: spacing.xs,
-  },
-  pressed: {
-    opacity: 0.8,
-  },
-  content: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  title: {
-    ...typography.subheading,
-    color: colors.textPrimary,
-  },
-  heTitle: {
-    ...typography.body,
-    color: colors.hebrewText,
-    textAlign: "right",
-    writingDirection: "rtl",
-  },
-  subtitle: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-  },
-  chevron: {
-    marginLeft: spacing.sm,
-    fontSize: 26,
-    color: colors.textMuted,
-  },
-});
+const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
+  StyleSheet.create({
+    container: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      marginBottom: spacing.xs,
+    },
+    pressed: {
+      opacity: 0.8,
+    },
+    content: {
+      flex: 1,
+      gap: spacing.xs,
+    },
+    title: {
+      ...typography.subheading,
+      color: colors.textPrimary,
+    },
+    heTitle: {
+      ...typography.body,
+      color: colors.hebrewText,
+      textAlign: "right",
+      writingDirection: "rtl",
+    },
+    subtitle: {
+      ...typography.bodySmall,
+      color: colors.textSecondary,
+    },
+    chevron: {
+      marginLeft: spacing.sm,
+      fontSize: 26,
+      color: colors.textMuted,
+    },
+  });

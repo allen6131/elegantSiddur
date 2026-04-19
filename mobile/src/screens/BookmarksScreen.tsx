@@ -1,7 +1,8 @@
+import { useMemo } from "react";
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/types";
-import { colors } from "../theme/colors";
+import { useThemeColors } from "../theme/useThemeColors";
 import { spacing } from "../theme/spacing";
 import { typography } from "../theme/typography";
 import { useBookmarks } from "../state/BookmarksContext";
@@ -11,6 +12,8 @@ import { findSectionById } from "../data/selectors";
 type Props = NativeStackScreenProps<RootStackParamList, "Bookmarks">;
 
 export function BookmarksScreen({ navigation }: Props) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { bookmarks, removeBookmark } = useBookmarks();
 
   const entries = bookmarks
@@ -70,59 +73,60 @@ export function BookmarksScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  header: {
-    gap: spacing.xs,
-  },
-  title: {
-    ...typography.heading,
-    color: colors.textPrimary,
-  },
-  subtitle: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  cardMain: {
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  serviceLabel: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  sectionTitle: {
-    ...typography.subheading,
-    color: colors.textPrimary,
-  },
-  heSectionTitle: {
-    ...typography.body,
-    color: colors.hebrewText,
-    textAlign: "right",
-    writingDirection: "rtl",
-  },
-  removeButton: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingVertical: spacing.sm,
-    alignItems: "center",
-  },
-  removeButtonText: {
-    color: colors.danger,
-    fontWeight: "600",
-  },
-});
+const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: spacing.lg,
+      gap: spacing.md,
+    },
+    header: {
+      gap: spacing.xs,
+    },
+    title: {
+      ...typography.heading,
+      color: colors.textPrimary,
+    },
+    subtitle: {
+      ...typography.bodySmall,
+      color: colors.textSecondary,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 16,
+      overflow: "hidden",
+    },
+    cardMain: {
+      padding: spacing.md,
+      gap: spacing.xs,
+    },
+    serviceLabel: {
+      ...typography.caption,
+      color: colors.textMuted,
+    },
+    sectionTitle: {
+      ...typography.subheading,
+      color: colors.textPrimary,
+    },
+    heSectionTitle: {
+      ...typography.body,
+      color: colors.hebrewText,
+      textAlign: "right",
+      writingDirection: "rtl",
+    },
+    removeButton: {
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingVertical: spacing.sm,
+      alignItems: "center",
+    },
+    removeButtonText: {
+      color: colors.danger,
+      fontWeight: "600",
+    },
+  });

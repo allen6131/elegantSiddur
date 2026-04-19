@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
-import { colors } from "../theme/colors";
 import { spacing } from "../theme/spacing";
 import { typography } from "../theme/typography";
+import { useThemeColors } from "../theme/useThemeColors";
 
 type EmptyStateProps = {
   title: string;
@@ -9,6 +9,9 @@ type EmptyStateProps = {
 };
 
 export function EmptyState({ title, description }: EmptyStateProps) {
+  const colors = useThemeColors();
+  const styles = makeStyles(colors);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
@@ -17,24 +20,25 @@ export function EmptyState({ title, description }: EmptyStateProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 18,
-    padding: spacing.xl,
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  title: {
-    ...typography.subheading,
-    color: colors.textPrimary,
-    textAlign: "center",
-  },
-  description: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    textAlign: "center",
-  },
-});
+const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
+  StyleSheet.create({
+    container: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 18,
+      padding: spacing.xl,
+      alignItems: "center",
+      gap: spacing.xs,
+    },
+    title: {
+      ...typography.subheading,
+      color: colors.textPrimary,
+      textAlign: "center",
+    },
+    description: {
+      ...typography.bodySmall,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+  });

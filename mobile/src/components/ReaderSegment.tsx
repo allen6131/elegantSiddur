@@ -2,7 +2,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import type { DisplayMode, OfflineSegment } from "../data/types";
 import { parseInlineMarkupToRuns } from "../utils/htmlInlineParser";
-import { colors } from "../theme/colors";
+import { useThemeColors } from "../theme/useThemeColors";
 import { spacing } from "../theme/spacing";
 import { typography } from "../theme/typography";
 
@@ -40,17 +40,19 @@ function renderInlineText(text: string, style: object, showNikud: boolean, isHeb
 }
 
 export function ReaderSegment({ segment, mode, fontScale, showNikud }: ReaderSegmentProps) {
+  const colors = useThemeColors();
   const showHebrew = mode === "hebrew" || mode === "bilingual";
   const showEnglish = mode === "english" || mode === "bilingual";
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { borderBottomColor: colors.border }]}>
       {showHebrew && segment.he ? (
         <View style={styles.hebrewContainer}>
           {renderInlineText(
             segment.he,
             [
               styles.hebrewText,
+              { color: colors.hebrewText },
               {
                 fontSize: typography.hebrew.fontSize * fontScale,
                 lineHeight: typography.hebrew.lineHeight * fontScale,
@@ -66,7 +68,10 @@ export function ReaderSegment({ segment, mode, fontScale, showNikud }: ReaderSeg
         <View style={styles.englishContainer}>
           {renderInlineText(
             segment.en,
-            [styles.englishText, { fontSize: typography.body.fontSize * fontScale }],
+            [
+              styles.englishText,
+              { fontSize: typography.body.fontSize * fontScale, color: colors.textSecondary },
+            ],
             true,
           )}
         </View>
@@ -79,14 +84,12 @@ const styles = StyleSheet.create({
   container: {
     paddingVertical: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
     gap: spacing.xs,
   },
   hebrewContainer: {
     alignItems: "flex-end",
   },
   hebrewText: {
-    color: colors.hebrewText,
     textAlign: "right",
     writingDirection: "rtl",
   },
@@ -95,7 +98,6 @@ const styles = StyleSheet.create({
   },
   englishText: {
     ...typography.body,
-    color: colors.textSecondary,
     textAlign: "left",
   },
   boldInline: {

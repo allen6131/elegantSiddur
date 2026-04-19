@@ -4,12 +4,14 @@ import { ServiceScreen } from "../screens/ServiceScreen";
 import { ReaderScreen } from "../screens/ReaderScreen";
 import { BookmarksScreen } from "../screens/BookmarksScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
-import { colors } from "../theme/colors";
+import { useThemeColors } from "../theme/useThemeColors";
 import type { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
+  const colors = useThemeColors();
+
   return (
     <Stack.Navigator
       initialRouteName="Home"

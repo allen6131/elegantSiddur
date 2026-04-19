@@ -13,7 +13,7 @@ import { getServiceData } from "../data/loader";
 import { OfflineSection } from "../data/types";
 import { RootStackParamList } from "../navigation/types";
 import { SectionRow } from "../components/SectionRow";
-import { colors } from "../theme/colors";
+import { useThemeColors } from "../theme/useThemeColors";
 import { spacing } from "../theme/spacing";
 import { typography } from "../theme/typography";
 import { sectionMatchesQuery } from "../utils/search";
@@ -21,6 +21,8 @@ import { sectionMatchesQuery } from "../utils/search";
 type Props = NativeStackScreenProps<RootStackParamList, "Service">;
 
 export function ServiceScreen({ navigation, route }: Props) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { serviceId } = route.params;
   const service = getServiceData(serviceId);
   const [query, setQuery] = useState("");
@@ -40,14 +42,21 @@ export function ServiceScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>{service.title}</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{service.title}</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             {service.heTitle} · {service.sectionCount} sections
           </Text>
           <TextInput
             value={query}
             onChangeText={setQuery}
-            style={styles.searchInput}
+            style={[
+              styles.searchInput,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                color: colors.textPrimary,
+              },
+            ]}
             placeholder="Find a section..."
             placeholderTextColor={colors.textMuted}
             autoCorrect={false}
@@ -61,9 +70,9 @@ export function ServiceScreen({ navigation, route }: Props) {
               })
             }
             disabled={service.sections.length === 0}
-            style={styles.jumpButton}
+            style={[styles.jumpButton, { backgroundColor: colors.accentSoft }]}
           >
-            <Text style={styles.jumpButtonText}>Open beginning</Text>
+            <Text style={[styles.jumpButtonText, { color: colors.accent }]}>Open beginning</Text>
           </Pressable>
         </View>
 
@@ -83,52 +92,47 @@ export function ServiceScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-  },
-  header: {
-    marginBottom: spacing.md,
-  },
-  title: {
-    ...typography.heading,
-    color: colors.textPrimary,
-  },
-  subtitle: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-    marginBottom: spacing.md,
-  },
-  searchInput: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    color: colors.textPrimary,
-    fontSize: 16,
-  },
-  jumpButton: {
-    marginTop: spacing.sm,
-    alignSelf: "flex-start",
-    backgroundColor: colors.accentSoft,
-    borderRadius: 999,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  jumpButtonText: {
-    color: colors.accent,
-    fontWeight: "700",
-  },
-  listContent: {
-    paddingBottom: spacing.xxl,
-  },
-});
+const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    container: {
+      flex: 1,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.lg,
+      backgroundColor: colors.background,
+    },
+    header: {
+      marginBottom: spacing.md,
+    },
+    title: {
+      ...typography.heading,
+    },
+    subtitle: {
+      ...typography.bodySmall,
+      marginTop: spacing.xs,
+      marginBottom: spacing.md,
+    },
+    searchInput: {
+      borderRadius: 14,
+      borderWidth: 1,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      fontSize: 16,
+    },
+    jumpButton: {
+      marginTop: spacing.sm,
+      alignSelf: "flex-start",
+      borderRadius: 999,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
+    },
+    jumpButtonText: {
+      fontWeight: "700",
+    },
+    listContent: {
+      paddingBottom: spacing.xxl,
+    },
+  });
