@@ -1,0 +1,123 @@
+{
+  "version": "v1-placeholder",
+  "generatedAt": "2026-04-19T00:00:00.000Z",
+  "source": {
+    "provider": "Sefaria",
+    "providerUrl": "https://www.sefaria.org",
+    "primaryText": "Siddur Ashkenaz + Birkat Hamazon",
+    "copyrightNotice": "Texts sourced from Sefaria API and bundled for offline use."
+  },
+  "serviceOrder": [
+    "shacharit",
+    "mincha",
+    "maariv",
+    "birkatHamazon"
+  ],
+  "services": {
+    "shacharit": {
+      "id": "shacharit",
+      "title": "Shacharit",
+      "heTitle": "שחרית",
+      "description": "Weekday morning prayer.",
+      "source": "Siddur Ashkenaz, Weekday, Shacharit",
+      "sectionCount": 1,
+      "segmentCount": 2,
+      "sections": [
+        {
+          "id": "shacharit-placeholder",
+          "title": "Modeh Ani",
+          "heTitle": "מודה אני",
+          "sourceRef": "Siddur Ashkenaz, Weekday, Shacharit, Preparatory Prayers, Modeh Ani",
+          "segmentCount": 2,
+          "segments": [
+            {
+              "id": "shacharit-1",
+              "he": "<b>מוֹדֶה אֲנִי</b> לְפָנֶיךָ...",
+              "en": "I give thanks before You..."
+            },
+            {
+              "id": "shacharit-2",
+              "he": "רַבָּה אֱמוּנָתֶךָ",
+              "en": "Great is Your faithfulness."
+            }
+          ]
+        }
+      ]
+    },
+    "mincha": {
+      "id": "mincha",
+      "title": "Mincha",
+      "heTitle": "מנחה",
+      "description": "Weekday afternoon prayer.",
+      "source": "Siddur Ashkenaz, Weekday, Minchah",
+      "sectionCount": 1,
+      "segmentCount": 1,
+      "sections": [
+        {
+          "id": "mincha-placeholder",
+          "title": "Ashrei",
+          "heTitle": "אשרי",
+          "sourceRef": "Siddur Ashkenaz, Weekday, Minchah, Ashrei",
+          "segmentCount": 1,
+          "segments": [
+            {
+              "id": "mincha-1",
+              "he": "אַשְׁרֵי יֹשְׁבֵי בֵיתֶךָ...",
+              "en": "Happy are those who dwell in Your house..."
+            }
+          ]
+        }
+      ]
+    },
+    "maariv": {
+      "id": "maariv",
+      "title": "Maariv",
+      "heTitle": "ערבית",
+      "description": "Weekday evening prayer.",
+      "source": "Siddur Ashkenaz, Weekday, Maariv",
+      "sectionCount": 1,
+      "segmentCount": 1,
+      "sections": [
+        {
+          "id": "maariv-placeholder",
+          "title": "Barchu",
+          "heTitle": "ברכו",
+          "sourceRef": "Siddur Ashkenaz, Weekday, Maariv, Barchu",
+          "segmentCount": 1,
+          "segments": [
+            {
+              "id": "maariv-1",
+              "he": "בָּרְכוּ אֶת ה׳ הַמְבֹרָךְ",
+              "en": "Bless the Lord, the blessed One."
+            }
+          ]
+        }
+      ]
+    },
+    "birkatHamazon": {
+      "id": "birkatHamazon",
+      "title": "Birkat Hamazon",
+      "heTitle": "ברכת המזון",
+      "description": "Grace after meals.",
+      "source": "Birkat Hamazon",
+      "sectionCount": 1,
+      "segmentCount": 1,
+      "sections": [
+        {
+          "id": "birkat-placeholder",
+          "title": "Blessing on the Food",
+          "heTitle": "ברכה על המזון",
+          "sourceRef": "Birkat Hamazon, Blessing on the Food",
+          "segmentCount": 1,
+          "segments": [
+            {
+              "id": "birkat-1",
+              "he": "בָּרוּךְ אַתָּה ה׳ אֱלֹהֵינוּ...",
+              "en": "Blessed are You, Lord our God..."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
