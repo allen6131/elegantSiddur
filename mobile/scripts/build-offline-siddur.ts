@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import crypto from "node:crypto";
 import path from "node:path";
 import process from "node:process";
 
@@ -53,6 +54,12 @@ type Service = {
 type OfflineDataset = {
   version: string;
   generatedAt: string;
+  metadata: {
+    leafCount: number;
+    sectionCount: number;
+    segmentCount: number;
+    contentHash: string;
+  };
   source: {
     provider: string;
     providerUrl: string;
@@ -337,9 +344,34 @@ async function main() {
     return acc;
   }, {} as Record<ServiceId, Service>);
 
+  const sectionCount = servicesArray.reduce((sum, service) => sum + service.sectionCount, 0);
+  const segmentCount = servicesArray.reduce((sum, service) => sum + service.segmentCount, 0);
+  const leafCount = sectionCount;
+  const contentHash = crypto
+    .createHash("sha256")
+    .update(
+      JSON.stringify(
+        servicesArray.map((service) => ({
+          id: service.id,
+          sections: service.sections.map((section) => ({
+            id: section.id,
+            sourceRef: section.sourceRef,
+            segments: section.segments,
+          })),
+        })),
+      ),
+    )
+    .digest("hex");
+
   const dataset: OfflineDataset = {
     version: "1.0.0",
     generatedAt: new Date().toISOString(),
+    metadata: {
+      leafCount,
+      sectionCount,
+      segmentCount,
+      contentHash,
+    },
     source: {
       provider: "Sefaria",
       providerUrl: "https://www.sefaria.org",
@@ -354,8 +386,12 @@ async function main() {
   await fs.mkdir(path.dirname(OUTPUT_PATH), { recursive: true });
   await fs.writeFile(OUTPUT_PATH, `${JSON.stringify(dataset, null, 2)}\n`, "utf8");
 
+  console.log(`Wrote offline dataset to ${OUTPUT_PATH}`);
   console.log(
-    `Wrote offline dataset to ${OUTPUT_PATH} with ${Object.keys(services).length} services.`,
+    `services=${Object.keys(services).length} sections=${sectionCount} segments=${segmentCount} hash=${contentHash.slice(
+      0,
+      12,
+    )}...`,
   );
 }
 

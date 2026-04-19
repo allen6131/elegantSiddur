@@ -1,6 +1,12 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-04-19T04:28:30.016Z",
+  "generatedAt": "2026-04-19T04:57:22.644Z",
+  "metadata": {
+    "leafCount": 182,
+    "sectionCount": 182,
+    "segmentCount": 1108,
+    "contentHash": "d3e99dd558442f915eba11ef7b7fffabd687a5154f451453d20919d793495db6"
+  },
   "source": {
     "provider": "Sefaria",
     "providerUrl": "https://www.sefaria.org",

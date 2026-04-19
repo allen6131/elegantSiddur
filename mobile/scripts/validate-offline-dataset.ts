@@ -45,6 +45,52 @@ function validateService(serviceId: ServiceId, dataset: OfflineDataset) {
   );
 }
 
+function validateOfflineCoverage(dataset: OfflineDataset) {
+  const missingEnglishSections: string[] = [];
+  const missingHebrewSections: string[] = [];
+  let englishSectionsWithContent = 0;
+  let hebrewSectionsWithContent = 0;
+
+  for (const serviceId of dataset.serviceOrder) {
+    const service = dataset.services[serviceId];
+
+    for (const section of service.sections) {
+      const hasHebrew = section.segments.some((segment) => Boolean(segment.he?.trim()));
+      const hasEnglish = section.segments.some((segment) => Boolean(segment.en?.trim()));
+
+      if (!hasHebrew) {
+        missingHebrewSections.push(`${serviceId}/${section.id}`);
+      } else {
+        hebrewSectionsWithContent += 1;
+      }
+      if (!hasEnglish) {
+        missingEnglishSections.push(`${serviceId}/${section.id}`);
+      } else {
+        englishSectionsWithContent += 1;
+      }
+    }
+  }
+
+  assert(
+    missingHebrewSections.length === 0,
+    `Sections missing Hebrew content: ${missingHebrewSections.slice(0, 10).join(", ")}`,
+  );
+  assert(
+    englishSectionsWithContent > 0,
+    "No sections contain English content in offline dataset.",
+  );
+  if (missingEnglishSections.length > 0) {
+    console.warn(
+      `[validate-offline-dataset] WARN: sections missing English content (${missingEnglishSections.length}): ${missingEnglishSections
+        .slice(0, 10)
+        .join(", ")}${missingEnglishSections.length > 10 ? "..." : ""}`,
+    );
+  }
+  console.log(
+    `[validate-offline-dataset] coverage: hebrew=${hebrewSectionsWithContent}, english=${englishSectionsWithContent}`,
+  );
+}
+
 function main() {
   assert(existsSync(DATASET_PATH), `Dataset file not found at ${DATASET_PATH}`);
 
@@ -60,6 +106,8 @@ function main() {
     assert(parsed.serviceOrder.includes(serviceId), `serviceOrder missing required id "${serviceId}".`);
     validateService(serviceId, parsed);
   }
+
+  validateOfflineCoverage(parsed);
 
   console.log(
     `[validate-offline-dataset] OK: version=${parsed.version}, generatedAt=${parsed.generatedAt}, services=${parsed.serviceOrder.length}`,

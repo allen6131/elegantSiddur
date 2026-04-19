@@ -43,12 +43,21 @@ cd mobile
 npm run build:offline-data
 ```
 
+When generation finishes, the script prints service/section/segment totals and a
+deterministic content hash so you can quickly verify whether the bundled content changed.
+
 ### Validate Offline Data
 
 ```bash
 cd mobile
 npm run validate:offline-data
 ```
+
+Validation enforces:
+- required services exist
+- section and segment IDs are consistent
+- Hebrew coverage is complete
+- English coverage is reported (warnings are surfaced for known sparse sections)
 
 ### Full Local Checks
 
