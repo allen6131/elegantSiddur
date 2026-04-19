@@ -5,6 +5,6 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "moduleResolution": "bundler",
-    "types": ["node"]
+    "types": ["node", "jest"]
   }
 }

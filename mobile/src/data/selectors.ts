@@ -1,5 +1,23 @@
 import { getDataset } from "./loader";
-import type { OfflineSection, ServiceId } from "./types";
+import type { OfflineDataset, OfflineSection, ServiceId } from "./types";
+
+export type IndexedSection = {
+  serviceId: ServiceId;
+  section: OfflineSection;
+};
+
+export function buildSectionIndex(dataset: OfflineDataset): Map<string, IndexedSection> {
+  const index = new Map<string, IndexedSection>();
+
+  for (const serviceId of dataset.serviceOrder) {
+    const service = dataset.services[serviceId];
+    for (const section of service.sections) {
+      index.set(section.id, { serviceId, section });
+    }
+  }
+
+  return index;
+}
 
 export type SectionLookupResult = {
   serviceId: ServiceId;
