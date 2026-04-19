@@ -34,7 +34,7 @@ export function RootNavigator() {
         name="Service"
         component={ServiceScreen}
         options={({ route }) => ({
-          title: route.params.serviceId,
+          title: route.params.serviceTitle ?? route.params.serviceId,
           headerLargeTitle: false,
         })}
       />
@@ -42,7 +42,7 @@ export function RootNavigator() {
         name="Reader"
         component={ReaderScreen}
         options={({ route }) => ({
-          title: route.params.sectionId,
+          title: route.params.sectionTitle ?? route.params.sectionId,
           headerLargeTitle: false,
         })}
       />

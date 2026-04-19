@@ -6,22 +6,9 @@ import { spacing } from "../theme/spacing";
 import { typography } from "../theme/typography";
 import { useBookmarks } from "../state/BookmarksContext";
 import { EmptyState } from "../components/EmptyState";
-import { getDataset } from "../data/loader";
+import { findSectionById } from "../data/selectors";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Bookmarks">;
-
-function findSectionById(sectionId: string) {
-  const dataset = getDataset();
-  for (const serviceId of dataset.serviceOrder) {
-    const service = dataset.services[serviceId];
-    for (const section of service.sections) {
-      if (section.id === sectionId) {
-        return { service, section };
-      }
-    }
-  }
-  return null;
-}
 
 export function BookmarksScreen({ navigation }: Props) {
   const { bookmarks, removeBookmark } = useBookmarks();
@@ -32,8 +19,8 @@ export function BookmarksScreen({ navigation }: Props) {
       if (!found) return null;
       return {
         sectionId,
-        serviceId: found.service.id,
-        serviceTitle: found.service.title,
+        serviceId: found.serviceId,
+        serviceTitle: found.serviceTitle,
         sectionTitle: found.section.title,
         sectionHeTitle: found.section.heTitle,
       };

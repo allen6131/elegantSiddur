@@ -187,7 +187,7 @@ function getNodeByPath(root: SefariaIndexNode, pathParts: string[]): SefariaInde
   let current: SefariaIndexNode | undefined = root;
 
   for (const pathPart of pathParts) {
-    const next = current?.nodes?.find(
+    const next: SefariaIndexNode | undefined = current?.nodes?.find(
       (node) => node.title === pathPart || node.key === pathPart,
     );
 

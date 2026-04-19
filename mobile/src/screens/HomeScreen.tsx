@@ -17,19 +17,38 @@ import { ServiceCard } from "../components/ServiceCard";
 import { RootStackParamList } from "../navigation/types";
 import { useRecents } from "../state/RecentsContext";
 import { EmptyState } from "../components/EmptyState";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { findSectionById } from "../data/selectors";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
 export function HomeScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const dataset = useMemo(() => getDataset(), []);
   const { recents } = useRecents();
-  const recentItems = recents.slice(0, 5);
+  const recentItems = useMemo(() => recents.slice(0, 5), [recents]);
+
+  const openRecent = (sectionId: string) => {
+    const sectionLookup = findSectionById(sectionId);
+    if (!sectionLookup) {
+      return;
+    }
+
+    navigation.navigate("Reader", {
+      serviceId: sectionLookup.serviceId,
+      sectionId: sectionLookup.section.id,
+      sectionTitle: sectionLookup.section.title,
+    });
+  };
 
   return (
     <FlatList
       data={dataset.serviceOrder}
       keyExtractor={(id) => id}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.xxl },
+      ]}
       ListHeaderComponent={
         <View style={styles.headerWrap}>
           <LinearGradient
@@ -83,12 +102,7 @@ export function HomeScreen({ navigation }: Props) {
               <Pressable
                 key={recent.sectionId}
                 style={styles.recentItem}
-                onPress={() =>
-                  navigation.navigate("Reader", {
-                    serviceId: recent.serviceId as any,
-                    sectionId: recent.sectionId,
-                  })
-                }
+                onPress={() => openRecent(recent.sectionId)}
               >
                 <Text style={styles.recentService}>{recent.serviceId}</Text>
                 <Text style={styles.recentTitle} numberOfLines={1}>

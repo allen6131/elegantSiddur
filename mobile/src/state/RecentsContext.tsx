@@ -7,13 +7,14 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import type { ServiceId } from '../data/types';
 
 const STORAGE_KEY = '@siddur-recents';
 const MAX_RECENTS = 24;
 
 export type RecentEntry = {
   sectionId: string;
-  serviceId: string;
+  serviceId: ServiceId;
   sectionTitle: string;
   lastOpenedAt: string;
 };
