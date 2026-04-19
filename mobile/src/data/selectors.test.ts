@@ -4,6 +4,12 @@ import type { OfflineDataset } from "./types";
 const mockDataset: OfflineDataset = {
   version: "test",
   generatedAt: "2026-01-01T00:00:00.000Z",
+  metadata: {
+    leafCount: 2,
+    sectionCount: 2,
+    segmentCount: 2,
+    contentHash: "test-hash",
+  },
   source: {
     provider: "Test",
     providerUrl: "https://example.com",

@@ -33,6 +33,12 @@ export type OfflineService = {
 export type OfflineDataset = {
   version: string;
   generatedAt: string;
+  metadata: {
+    leafCount: number;
+    sectionCount: number;
+    segmentCount: number;
+    contentHash: string;
+  };
   source: {
     provider: string;
     providerUrl: string;

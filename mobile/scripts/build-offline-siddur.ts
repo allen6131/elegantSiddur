@@ -123,6 +123,10 @@ const OUTPUT_PATH = path.resolve(
   process.cwd(),
   "assets/offline/siddur.offline.v1.json",
 );
+const METADATA_OUTPUT_PATH = path.resolve(
+  process.cwd(),
+  "assets/offline/metadata.json",
+);
 const SEFARIA_BASE = "https://www.sefaria.org";
 
 function toSlug(input: string): string {
@@ -385,8 +389,27 @@ async function main() {
 
   await fs.mkdir(path.dirname(OUTPUT_PATH), { recursive: true });
   await fs.writeFile(OUTPUT_PATH, `${JSON.stringify(dataset, null, 2)}\n`, "utf8");
+  await fs.writeFile(
+    METADATA_OUTPUT_PATH,
+    `${JSON.stringify(
+      {
+        version: dataset.version,
+        generatedAt: dataset.generatedAt,
+        metadata: dataset.metadata,
+        source: {
+          provider: dataset.source.provider,
+          providerUrl: dataset.source.providerUrl,
+          primaryText: dataset.source.primaryText,
+        },
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
 
   console.log(`Wrote offline dataset to ${OUTPUT_PATH}`);
+  console.log(`Wrote metadata to ${METADATA_OUTPUT_PATH}`);
   console.log(
     `services=${Object.keys(services).length} sections=${sectionCount} segments=${segmentCount} hash=${contentHash.slice(
       0,

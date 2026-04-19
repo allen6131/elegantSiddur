@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import type { OfflineDataset, ServiceId } from "../src/data/types";
 
 const DATASET_PATH = resolve(process.cwd(), "assets/offline/siddur.offline.v1.json");
+const METADATA_PATH = resolve(process.cwd(), "assets/offline/metadata.json");
 
 function fail(message: string): never {
   throw new Error(`[validate-offline-dataset] ${message}`);
@@ -93,9 +94,21 @@ function validateOfflineCoverage(dataset: OfflineDataset) {
 
 function main() {
   assert(existsSync(DATASET_PATH), `Dataset file not found at ${DATASET_PATH}`);
+  assert(existsSync(METADATA_PATH), `Metadata file not found at ${METADATA_PATH}`);
 
   const raw = readFileSync(DATASET_PATH, "utf8");
   const parsed = JSON.parse(raw) as OfflineDataset;
+  const metadataRaw = readFileSync(METADATA_PATH, "utf8");
+  const metadata = JSON.parse(metadataRaw) as {
+    version: string;
+    generatedAt: string;
+    metadata: {
+      sectionCount: number;
+      segmentCount: number;
+      leafCount: number;
+      contentHash: string;
+    };
+  };
 
   assert(parsed.version, "Dataset missing version.");
   assert(parsed.generatedAt, "Dataset missing generatedAt.");
@@ -108,6 +121,35 @@ function main() {
   }
 
   validateOfflineCoverage(parsed);
+
+  const computedSectionCount = parsed.serviceOrder.reduce(
+    (sum, serviceId) => sum + parsed.services[serviceId].sections.length,
+    0,
+  );
+  const computedSegmentCount = parsed.serviceOrder.reduce(
+    (sum, serviceId) => sum + parsed.services[serviceId].segmentCount,
+    0,
+  );
+  const computedLeafCount = computedSectionCount;
+
+  assert(metadata.version === parsed.version, "metadata.version mismatch.");
+  assert(metadata.generatedAt === parsed.generatedAt, "metadata.generatedAt mismatch.");
+  assert(
+    metadata.metadata.sectionCount === computedSectionCount,
+    `metadata.sectionCount mismatch (meta=${metadata.metadata.sectionCount}, computed=${computedSectionCount}).`,
+  );
+  assert(
+    metadata.metadata.segmentCount === computedSegmentCount,
+    `metadata.segmentCount mismatch (meta=${metadata.metadata.segmentCount}, computed=${computedSegmentCount}).`,
+  );
+  assert(
+    metadata.metadata.leafCount === computedLeafCount,
+    `metadata.leafCount mismatch (meta=${metadata.metadata.leafCount}, computed=${computedLeafCount}).`,
+  );
+  assert(
+    metadata.metadata.contentHash === parsed.metadata.contentHash,
+    "metadata.contentHash mismatch with dataset.",
+  );
 
   console.log(
     `[validate-offline-dataset] OK: version=${parsed.version}, generatedAt=${parsed.generatedAt}, services=${parsed.serviceOrder.length}`,
