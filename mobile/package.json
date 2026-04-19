@@ -12,7 +12,8 @@
     "test": "jest --runInBand",
     "build:offline-data": "tsx ./scripts/build-offline-siddur.ts",
     "validate:offline-data": "tsx ./scripts/validate-offline-dataset.ts",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run validate:offline-data"
+    "verify:offline-runtime": "tsx ./scripts/verify-offline-runtime.ts",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run validate:offline-data && npm run verify:offline-runtime"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^3.0.2",

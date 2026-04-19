@@ -57,6 +57,8 @@ cd mobile
 npm run check
 ```
 
+This includes a static runtime-offline verification script that ensures app source files do not introduce network text fetching paths.
+
 ## Sefaria Attribution
 
 Prayer text content is sourced from Sefaria and bundled locally for offline usage in this app.
