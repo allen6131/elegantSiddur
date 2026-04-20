@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import type { OfflineSection } from "../data/types";
 import { spacing } from "../theme/spacing";
 import { typography } from "../theme/typography";
@@ -22,6 +22,32 @@ export function SectionJumpSheet({
 }: SectionJumpSheetProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    if (!visible) {
+      setQuery("");
+    }
+  }, [visible]);
+
+  const sectionIndexById = useMemo(
+    () => new Map(sections.map((section, index) => [section.id, index])),
+    [sections],
+  );
+
+  const filteredSections = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return sections;
+    }
+
+    return sections.filter((section) => {
+      const matchesTitle = section.title.toLowerCase().includes(normalizedQuery);
+      const matchesHebrew = section.heTitle.toLowerCase().includes(normalizedQuery);
+      const matchesSource = section.sourceRef.toLowerCase().includes(normalizedQuery);
+      return matchesTitle || matchesHebrew || matchesSource;
+    });
+  }, [query, sections]);
 
   if (!visible) {
     return null;
@@ -37,27 +63,43 @@ export function SectionJumpSheet({
             <Text style={styles.closeButtonText}>Close</Text>
           </Pressable>
         </View>
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          style={styles.searchInput}
+          placeholder="Search sections..."
+          placeholderTextColor={colors.textMuted}
+          autoCorrect={false}
+          autoCapitalize="none"
+        />
         <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
-          {sections.map((item, index) => {
-            const isActive = item.id === activeSectionId;
+          {filteredSections.length === 0 ? (
+            <View style={styles.emptyStateWrap}>
+              <Text style={styles.emptyStateText}>No sections found</Text>
+            </View>
+          ) : (
+            filteredSections.map((item) => {
+              const isActive = item.id === activeSectionId;
+              const sectionIndex = sectionIndexById.get(item.id) ?? 0;
 
-            return (
-              <Pressable
-                key={item.id}
-                style={[styles.sectionRow, isActive && styles.sectionRowActive]}
-                onPress={() => onSelectSection(item.id)}
-              >
-                <View style={styles.sectionTextWrap}>
-                  <Text style={styles.sectionNumber}>{index + 1}</Text>
-                  <View style={styles.sectionTitles}>
-                    <Text style={styles.sectionTitle}>{item.title}</Text>
-                    <Text style={styles.sectionHebrewTitle}>{item.heTitle}</Text>
+              return (
+                <Pressable
+                  key={item.id}
+                  style={[styles.sectionRow, isActive && styles.sectionRowActive]}
+                  onPress={() => onSelectSection(item.id)}
+                >
+                  <View style={styles.sectionTextWrap}>
+                    <Text style={styles.sectionNumber}>{sectionIndex + 1}</Text>
+                    <View style={styles.sectionTitles}>
+                      <Text style={styles.sectionTitle}>{item.title}</Text>
+                      <Text style={styles.sectionHebrewTitle}>{item.heTitle}</Text>
+                    </View>
                   </View>
-                </View>
-                {isActive ? <Text style={styles.currentTag}>Current</Text> : null}
-              </Pressable>
-            );
-          })}
+                  {isActive ? <Text style={styles.currentTag}>Current</Text> : null}
+                </Pressable>
+              );
+            })
+          )}
         </ScrollView>
       </View>
     </View>
@@ -108,6 +150,16 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
       color: colors.textPrimary,
       fontWeight: "600",
       fontSize: 13,
+    },
+    searchInput: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      backgroundColor: colors.surface,
+      color: colors.textPrimary,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      fontSize: 15,
     },
     scrollArea: {
       flex: 1,
@@ -163,5 +215,13 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
       alignSelf: "center",
       textTransform: "uppercase",
       letterSpacing: 0.8,
+    },
+    emptyStateWrap: {
+      paddingVertical: spacing.xl,
+      alignItems: "center",
+    },
+    emptyStateText: {
+      ...typography.bodySmall,
+      color: colors.textMuted,
     },
   });
