@@ -35,7 +35,8 @@ type SegmentRow = {
 type ReaderRow = SectionHeaderRow | SegmentRow;
 
 const WINDOW_BEFORE = 4;
-const WINDOW_AFTER = 40;
+const WINDOW_INITIAL = 40;
+const WINDOW_LOAD_MORE = 20;
 
 export function ReaderScreen({ navigation, route }: Props) {
   const colors = useThemeColors();
@@ -55,8 +56,10 @@ export function ReaderScreen({ navigation, route }: Props) {
   const fallbackSection = service.sections[0];
   const initialSectionId = sectionById.has(sectionId) ? sectionId : fallbackSection.id;
   const initialSectionIndex = sectionIndexById.get(initialSectionId) ?? 0;
+  const maxInitialWindowEnd = Math.min(service.sections.length, initialSectionIndex + WINDOW_INITIAL);
+  const [sectionWindowEnd, setSectionWindowEnd] = useState(maxInitialWindowEnd);
   const windowStart = Math.max(0, initialSectionIndex - WINDOW_BEFORE);
-  const windowEnd = Math.min(service.sections.length, initialSectionIndex + WINDOW_AFTER);
+  const windowEnd = Math.max(windowStart + 1, sectionWindowEnd);
   const visibleSections = useMemo(
     () => service.sections.slice(windowStart, windowEnd),
     [service.sections, windowEnd, windowStart],
@@ -115,6 +118,10 @@ export function ReaderScreen({ navigation, route }: Props) {
   useEffect(() => {
     setActiveSectionId(initialSectionId);
   }, [initialSectionId]);
+
+  useEffect(() => {
+    setSectionWindowEnd(maxInitialWindowEnd);
+  }, [maxInitialWindowEnd]);
 
   useEffect(() => {
     activeSectionIdRef.current = activeSectionId;
@@ -352,6 +359,15 @@ export function ReaderScreen({ navigation, route }: Props) {
           maxToRenderPerBatch={24}
           windowSize={12}
           removeClippedSubviews
+          onEndReached={() => {
+            setSectionWindowEnd((current) => {
+              if (current >= service.sections.length) {
+                return current;
+              }
+              return Math.min(service.sections.length, current + WINDOW_LOAD_MORE);
+            });
+          }}
+          onEndReachedThreshold={0.3}
           onScrollToIndexFailed={({ index, averageItemLength, highestMeasuredFrameIndex }) => {
             if (scrollRetryRef.current >= 1) {
               return;
