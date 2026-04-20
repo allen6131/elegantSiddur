@@ -37,6 +37,8 @@ type ReaderRow = SectionHeaderRow | SegmentRow;
 const WINDOW_BEFORE = 4;
 const WINDOW_INITIAL = 40;
 const WINDOW_LOAD_MORE = 20;
+const WINDOW_MAX_SECTIONS = 90;
+const WINDOW_PREFETCH_THRESHOLD = 6;
 
 export function ReaderScreen({ navigation, route }: Props) {
   const colors = useThemeColors();
@@ -59,7 +61,8 @@ export function ReaderScreen({ navigation, route }: Props) {
   const maxInitialWindowEnd = Math.min(service.sections.length, initialSectionIndex + WINDOW_INITIAL);
   const [sectionWindowEnd, setSectionWindowEnd] = useState(maxInitialWindowEnd);
   const windowStart = Math.max(0, initialSectionIndex - WINDOW_BEFORE);
-  const windowEnd = Math.max(windowStart + 1, sectionWindowEnd);
+  const boundedWindowEnd = Math.min(service.sections.length, windowStart + WINDOW_MAX_SECTIONS);
+  const windowEnd = Math.min(boundedWindowEnd, Math.max(windowStart + 1, sectionWindowEnd));
   const visibleSections = useMemo(
     () => service.sections.slice(windowStart, windowEnd),
     [service.sections, windowEnd, windowStart],
@@ -122,6 +125,19 @@ export function ReaderScreen({ navigation, route }: Props) {
   useEffect(() => {
     setSectionWindowEnd(maxInitialWindowEnd);
   }, [maxInitialWindowEnd]);
+
+  useEffect(() => {
+    if (activeSectionIndex < windowEnd - WINDOW_PREFETCH_THRESHOLD) {
+      return;
+    }
+
+    setSectionWindowEnd((current) => {
+      if (current >= boundedWindowEnd) {
+        return current;
+      }
+      return Math.min(boundedWindowEnd, current + WINDOW_LOAD_MORE);
+    });
+  }, [activeSectionIndex, boundedWindowEnd, windowEnd]);
 
   useEffect(() => {
     activeSectionIdRef.current = activeSectionId;
@@ -361,10 +377,10 @@ export function ReaderScreen({ navigation, route }: Props) {
           removeClippedSubviews
           onEndReached={() => {
             setSectionWindowEnd((current) => {
-              if (current >= service.sections.length) {
+              if (current >= boundedWindowEnd) {
                 return current;
               }
-              return Math.min(service.sections.length, current + WINDOW_LOAD_MORE);
+              return Math.min(boundedWindowEnd, current + WINDOW_LOAD_MORE);
             });
           }}
           onEndReachedThreshold={0.3}
