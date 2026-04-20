@@ -1,0 +1,159 @@
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import type { OfflineDataset, ServiceId } from "../src/data/types";
+
+const DATASET_PATH = resolve(process.cwd(), "assets/offline/siddur.offline.v1.json");
+const METADATA_PATH = resolve(process.cwd(), "assets/offline/metadata.json");
+
+function fail(message: string): never {
+  throw new Error(`[validate-offline-dataset] ${message}`);
+}
+
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) {
+    fail(message);
+  }
+}
+
+function validateService(serviceId: ServiceId, dataset: OfflineDataset) {
+  const service = dataset.services[serviceId];
+  assert(service, `Missing service entry for "${serviceId}".`);
+  assert(service.sections.length > 0, `Service "${serviceId}" has no sections.`);
+
+  const seenSectionIds = new Set<string>();
+
+  for (const section of service.sections) {
+    assert(section.id, `Service "${serviceId}" has section with empty id.`);
+    assert(!seenSectionIds.has(section.id), `Duplicate section id "${section.id}" in "${serviceId}".`);
+    seenSectionIds.add(section.id);
+    assert(section.sourceRef, `Section "${section.id}" missing sourceRef.`);
+    assert(section.segments.length > 0, `Section "${section.id}" has no segments.`);
+
+    for (const segment of section.segments) {
+      assert(segment.id, `Section "${section.id}" has segment missing id.`);
+      assert(Boolean(segment.he || segment.en), `Segment "${segment.id}" in "${section.id}" has no text.`);
+    }
+  }
+
+  const computedSegmentCount = service.sections.reduce((sum, section) => sum + section.segmentCount, 0);
+  assert(
+    computedSegmentCount === service.segmentCount,
+    `Service "${serviceId}" segmentCount mismatch (declared=${service.segmentCount}, computed=${computedSegmentCount}).`,
+  );
+  assert(
+    service.sectionCount === service.sections.length,
+    `Service "${serviceId}" sectionCount mismatch (declared=${service.sectionCount}, computed=${service.sections.length}).`,
+  );
+}
+
+function validateOfflineCoverage(dataset: OfflineDataset) {
+  const missingEnglishSections: string[] = [];
+  const missingHebrewSections: string[] = [];
+  let englishSectionsWithContent = 0;
+  let hebrewSectionsWithContent = 0;
+
+  for (const serviceId of dataset.serviceOrder) {
+    const service = dataset.services[serviceId];
+
+    for (const section of service.sections) {
+      const hasHebrew = section.segments.some((segment) => Boolean(segment.he?.trim()));
+      const hasEnglish = section.segments.some((segment) => Boolean(segment.en?.trim()));
+
+      if (!hasHebrew) {
+        missingHebrewSections.push(`${serviceId}/${section.id}`);
+      } else {
+        hebrewSectionsWithContent += 1;
+      }
+      if (!hasEnglish) {
+        missingEnglishSections.push(`${serviceId}/${section.id}`);
+      } else {
+        englishSectionsWithContent += 1;
+      }
+    }
+  }
+
+  assert(
+    missingHebrewSections.length === 0,
+    `Sections missing Hebrew content: ${missingHebrewSections.slice(0, 10).join(", ")}`,
+  );
+  assert(
+    englishSectionsWithContent > 0,
+    "No sections contain English content in offline dataset.",
+  );
+  if (missingEnglishSections.length > 0) {
+    console.warn(
+      `[validate-offline-dataset] WARN: sections missing English content (${missingEnglishSections.length}): ${missingEnglishSections
+        .slice(0, 10)
+        .join(", ")}${missingEnglishSections.length > 10 ? "..." : ""}`,
+    );
+  }
+  console.log(
+    `[validate-offline-dataset] coverage: hebrew=${hebrewSectionsWithContent}, english=${englishSectionsWithContent}`,
+  );
+}
+
+function main() {
+  assert(existsSync(DATASET_PATH), `Dataset file not found at ${DATASET_PATH}`);
+  assert(existsSync(METADATA_PATH), `Metadata file not found at ${METADATA_PATH}`);
+
+  const raw = readFileSync(DATASET_PATH, "utf8");
+  const parsed = JSON.parse(raw) as OfflineDataset;
+  const metadataRaw = readFileSync(METADATA_PATH, "utf8");
+  const metadata = JSON.parse(metadataRaw) as {
+    version: string;
+    generatedAt: string;
+    metadata: {
+      sectionCount: number;
+      segmentCount: number;
+      leafCount: number;
+      contentHash: string;
+    };
+  };
+
+  assert(parsed.version, "Dataset missing version.");
+  assert(parsed.generatedAt, "Dataset missing generatedAt.");
+  assert(parsed.serviceOrder.length > 0, "Dataset serviceOrder is empty.");
+
+  const requiredServiceIds: ServiceId[] = ["shacharit", "mincha", "maariv", "birkatHamazon"];
+  for (const serviceId of requiredServiceIds) {
+    assert(parsed.serviceOrder.includes(serviceId), `serviceOrder missing required id "${serviceId}".`);
+    validateService(serviceId, parsed);
+  }
+
+  validateOfflineCoverage(parsed);
+
+  const computedSectionCount = parsed.serviceOrder.reduce(
+    (sum, serviceId) => sum + parsed.services[serviceId].sections.length,
+    0,
+  );
+  const computedSegmentCount = parsed.serviceOrder.reduce(
+    (sum, serviceId) => sum + parsed.services[serviceId].segmentCount,
+    0,
+  );
+  const computedLeafCount = computedSectionCount;
+
+  assert(metadata.version === parsed.version, "metadata.version mismatch.");
+  assert(metadata.generatedAt === parsed.generatedAt, "metadata.generatedAt mismatch.");
+  assert(
+    metadata.metadata.sectionCount === computedSectionCount,
+    `metadata.sectionCount mismatch (meta=${metadata.metadata.sectionCount}, computed=${computedSectionCount}).`,
+  );
+  assert(
+    metadata.metadata.segmentCount === computedSegmentCount,
+    `metadata.segmentCount mismatch (meta=${metadata.metadata.segmentCount}, computed=${computedSegmentCount}).`,
+  );
+  assert(
+    metadata.metadata.leafCount === computedLeafCount,
+    `metadata.leafCount mismatch (meta=${metadata.metadata.leafCount}, computed=${computedLeafCount}).`,
+  );
+  assert(
+    metadata.metadata.contentHash === parsed.metadata.contentHash,
+    "metadata.contentHash mismatch with dataset.",
+  );
+
+  console.log(
+    `[validate-offline-dataset] OK: version=${parsed.version}, generatedAt=${parsed.generatedAt}, services=${parsed.serviceOrder.length}`,
+  );
+}
+
+main();
