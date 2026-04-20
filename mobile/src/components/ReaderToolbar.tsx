@@ -8,6 +8,7 @@ type ReaderToolbarProps = {
   isBookmarked: boolean;
   onGoPrev: () => void;
   onGoNext: () => void;
+  onOpenSections: () => void;
   onToggleBookmark: () => void;
 };
 
@@ -17,6 +18,7 @@ export function ReaderToolbar({
   isBookmarked,
   onGoPrev,
   onGoNext,
+  onOpenSections,
   onToggleBookmark,
 }: ReaderToolbarProps) {
   const themeColors = useThemeColors();
@@ -33,6 +35,14 @@ export function ReaderToolbar({
         <Text style={[styles.buttonText, !canGoPrev && styles.buttonTextDisabled]}>
           Previous
         </Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        style={styles.secondaryButton}
+        onPress={onOpenSections}
+      >
+        <Text style={styles.secondaryButtonText}>Sections</Text>
       </Pressable>
 
       <Pressable
@@ -64,10 +74,7 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
   container: {
     flexDirection: "row",
     gap: spacing.xs,
-    marginBottom: spacing.sm,
     alignItems: "center",
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
   },
   button: {
     flex: 1,
@@ -89,6 +96,19 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
   },
   buttonTextDisabled: {
     color: colors.textMuted,
+  },
+  secondaryButton: {
+    borderRadius: 12,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  secondaryButtonText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.textPrimary,
   },
   bookmarkButton: {
     borderRadius: 12,

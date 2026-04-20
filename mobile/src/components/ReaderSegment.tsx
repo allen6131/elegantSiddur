@@ -82,8 +82,8 @@ export function ReaderSegment({ segment, mode, fontScale, showNikud }: ReaderSeg
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 0,
     gap: spacing.xs,
   },
   hebrewContainer: {

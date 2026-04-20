@@ -5,6 +5,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import type { ServiceId } from '../data/types';
@@ -31,6 +32,7 @@ const RecentsContext = createContext<RecentsContextValue | undefined>(undefined)
 export function RecentsProvider({ children }: { children: React.ReactNode }) {
   const [recents, setRecents] = useState<RecentEntry[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
+  const recentsRef = useRef<RecentEntry[]>([]);
 
   useEffect(() => {
     async function hydrate() {
@@ -42,6 +44,7 @@ export function RecentsProvider({ children }: { children: React.ReactNode }) {
         }
         const parsed = JSON.parse(raw) as RecentEntry[];
         if (Array.isArray(parsed)) {
+          recentsRef.current = parsed;
           setRecents(parsed);
         }
       } catch {
@@ -53,7 +56,12 @@ export function RecentsProvider({ children }: { children: React.ReactNode }) {
     hydrate();
   }, []);
 
+  useEffect(() => {
+    recentsRef.current = recents;
+  }, [recents]);
+
   const persist = useCallback(async (next: RecentEntry[]) => {
+    recentsRef.current = next;
     setRecents(next);
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }, []);
@@ -64,14 +72,15 @@ export function RecentsProvider({ children }: { children: React.ReactNode }) {
         ...entry,
         lastOpenedAt: new Date().toISOString(),
       };
-      const deduped = recents.filter((item) => item.sectionId !== entry.sectionId);
+      const deduped = recentsRef.current.filter((item) => item.sectionId !== entry.sectionId);
       const next = [nextEntry, ...deduped].slice(0, MAX_RECENTS);
       await persist(next);
     },
-    [persist, recents],
+    [persist],
   );
 
   const clearRecents = useCallback(async () => {
+    recentsRef.current = [];
     setRecents([]);
     await AsyncStorage.removeItem(STORAGE_KEY);
   }, []);

@@ -30,4 +30,22 @@ describe("parseInlineMarkupToRuns", () => {
 
     expect(runs).toEqual([{ text: "\"A&B\" <test>" }]);
   });
+
+  it("removes footnote markers and payloads", () => {
+    const runs = parseInlineMarkupToRuns(
+      "Blessed<sup class=\"footnote-marker\">1</sup><i class=\"footnote\">Some note</i> are You",
+    );
+
+    expect(runs).toEqual([{ text: "Blessed" }, { text: " are You" }]);
+  });
+
+  it("keeps regular italic text that is not footnotes", () => {
+    const runs = parseInlineMarkupToRuns("Say <i>mitzvah</i> with care");
+
+    expect(runs).toEqual([
+      { text: "Say " },
+      { text: "mitzvah", italic: true },
+      { text: " with care" },
+    ]);
+  });
 });

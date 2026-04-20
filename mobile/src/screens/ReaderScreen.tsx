@@ -1,10 +1,12 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useMemo } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FlatList, Pressable, StyleSheet, Text, View, type ListRenderItemInfo } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ReaderSegment } from "../components/ReaderSegment";
+import { SectionJumpSheet } from "../components/SectionJumpSheet";
 import { ReaderToolbar } from "../components/ReaderToolbar";
 import { getServiceData } from "../data/loader";
+import type { OfflineSection } from "../data/types";
 import { useBookmarks } from "../state/BookmarksContext";
 import { useRecents } from "../state/RecentsContext";
 import { useSettings } from "../state/SettingsContext";
@@ -16,84 +18,287 @@ import type { ThemeColors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Reader">;
 
+type SectionHeaderRow = {
+  key: string;
+  type: "sectionHeader";
+  section: OfflineSection;
+  absoluteSectionIndex: number;
+};
+
+type SegmentRow = {
+  key: string;
+  type: "segment";
+  sectionId: string;
+  segment: OfflineSection["segments"][number];
+};
+
+type ReaderRow = SectionHeaderRow | SegmentRow;
+
+const WINDOW_BEFORE = 4;
+const WINDOW_AFTER = 40;
+
 export function ReaderScreen({ navigation, route }: Props) {
   const colors = useThemeColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { serviceId, sectionId } = route.params;
   const service = getServiceData(serviceId);
+  const listRef = useRef<FlatList<ReaderRow>>(null);
+  const [isJumpSheetVisible, setIsJumpSheetVisible] = useState(false);
 
-  const sectionIndex = service.sections.findIndex((section) => section.id === sectionId);
-  const section = sectionIndex >= 0 ? service.sections[sectionIndex] : service.sections[0];
-  const fallbackIndex = sectionIndex >= 0 ? sectionIndex : 0;
+  const sectionById = useMemo(() => {
+    return new Map(service.sections.map((section) => [section.id, section]));
+  }, [service.sections]);
+  const sectionIndexById = useMemo(
+    () => new Map(service.sections.map((section, index) => [section.id, index])),
+    [service.sections],
+  );
+  const fallbackSection = service.sections[0];
+  const initialSectionId = sectionById.has(sectionId) ? sectionId : fallbackSection.id;
+  const initialSectionIndex = sectionIndexById.get(initialSectionId) ?? 0;
+  const windowStart = Math.max(0, initialSectionIndex - WINDOW_BEFORE);
+  const windowEnd = Math.min(service.sections.length, initialSectionIndex + WINDOW_AFTER);
+  const visibleSections = useMemo(
+    () => service.sections.slice(windowStart, windowEnd),
+    [service.sections, windowEnd, windowStart],
+  );
+
+  const [activeSectionId, setActiveSectionId] = useState(initialSectionId);
+  const activeSectionIdRef = useRef(initialSectionId);
+  const sectionHeaderOffsetByIdRef = useRef<Record<string, number>>({});
+  const lastRecentSectionRef = useRef("");
+  const scrollRetryRef = useRef(0);
 
   const { settings, setFontScale, setLanguageMode } = useSettings();
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const { openRecent } = useRecents();
 
-  const canGoPrevious = sectionIndex > 0;
-  const canGoNext = sectionIndex < service.sections.length - 1 && sectionIndex >= 0;
-
-  const bookmarkActive = isBookmarked(section.id);
   const readerLanguageOptions = settings.showEnglish
     ? (["hebrew", "english", "bilingual"] as const)
     : (["hebrew"] as const);
+  const activeSection = sectionById.get(activeSectionId) ?? fallbackSection;
+  const activeSectionIndex = sectionIndexById.get(activeSection.id) ?? 0;
+  const canGoPrevious = activeSectionIndex > 0;
+  const canGoNext = activeSectionIndex < service.sections.length - 1;
+  const bookmarkActive = isBookmarked(activeSection.id);
+  const currentReadingMode =
+    settings.showEnglish ||
+    (settings.languageMode !== "english" && settings.languageMode !== "bilingual")
+      ? settings.languageMode
+      : "hebrew";
 
-  useMemo(() => {
-    void openRecent({
-      sectionId: section.id,
-      serviceId,
-      sectionTitle: section.title,
+  const { readerRows, headerRowIndexBySectionId } = useMemo(() => {
+    const rows: ReaderRow[] = [];
+    const sectionHeaderIndices = new Map<string, number>();
+
+    visibleSections.forEach((section, sectionOffset) => {
+      const absoluteSectionIndex = windowStart + sectionOffset;
+      sectionHeaderIndices.set(section.id, rows.length);
+      rows.push({
+        key: `${section.id}:header`,
+        type: "sectionHeader",
+        section,
+        absoluteSectionIndex,
+      });
+      section.segments.forEach((segment) => {
+        rows.push({
+          key: segment.id,
+          type: "segment",
+          sectionId: section.id,
+          segment,
+        });
+      });
     });
-  }, [openRecent, section.id, section.title, serviceId]);
 
-  const goToSibling = (direction: -1 | 1) => {
-    const nextIndex = sectionIndex + direction;
-    const nextSection = service.sections[nextIndex];
-    if (!nextSection) {
+    return { readerRows: rows, headerRowIndexBySectionId: sectionHeaderIndices };
+  }, [visibleSections, windowStart]);
+
+  useEffect(() => {
+    setActiveSectionId(initialSectionId);
+  }, [initialSectionId]);
+
+  useEffect(() => {
+    activeSectionIdRef.current = activeSectionId;
+  }, [activeSectionId]);
+
+  useEffect(() => {
+    navigation.setOptions({ title: activeSection.title });
+  }, [activeSection.title, navigation]);
+
+  useEffect(() => {
+    const sectionForRecent = sectionById.get(initialSectionId);
+    if (!sectionForRecent || lastRecentSectionRef.current === sectionForRecent.id) {
       return;
     }
 
-    navigation.replace("Reader", {
+    lastRecentSectionRef.current = sectionForRecent.id;
+    void openRecent({
+      sectionId: sectionForRecent.id,
       serviceId,
-      sectionId: nextSection.id,
+      sectionTitle: sectionForRecent.title,
     });
+  }, [initialSectionId, openRecent, sectionById, serviceId]);
+
+  const scrollToSection = useCallback(
+    (targetSectionId: string, animated = true) => {
+      const targetIndex = headerRowIndexBySectionId.get(targetSectionId);
+      if (targetIndex === undefined) {
+        const targetSection = sectionById.get(targetSectionId);
+        if (!targetSection) {
+          return;
+        }
+        navigation.replace("Reader", {
+          serviceId,
+          sectionId: targetSectionId,
+          sectionTitle: targetSection.title,
+        });
+        return;
+      }
+
+      scrollRetryRef.current = 0;
+      setActiveSectionId(targetSectionId);
+      listRef.current?.scrollToIndex({ index: targetIndex, animated, viewPosition: 0 });
+    },
+    [headerRowIndexBySectionId, navigation, sectionById, serviceId],
+  );
+
+  const goToSiblingSection = (direction: -1 | 1) => {
+    const nextSection = service.sections[activeSectionIndex + direction];
+    if (!nextSection) {
+      return;
+    }
+    scrollToSection(nextSection.id);
   };
 
-  const jumpToSection = () => {
-    navigation.navigate("Service", { serviceId });
-  };
+  const updateActiveSectionFromOffset = useCallback(
+    (yOffset: number) => {
+      let nextActiveSectionId = visibleSections[0]?.id;
+
+      for (const section of visibleSections) {
+        const headerOffset = sectionHeaderOffsetByIdRef.current[section.id];
+        if (headerOffset === undefined) {
+          continue;
+        }
+
+        if (headerOffset <= yOffset + spacing.md) {
+          nextActiveSectionId = section.id;
+        } else {
+          break;
+        }
+      }
+
+      if (nextActiveSectionId && nextActiveSectionId !== activeSectionIdRef.current) {
+        setActiveSectionId(nextActiveSectionId);
+      }
+    },
+    [visibleSections],
+  );
+
+  const renderReaderRow = useCallback(
+    ({ item }: ListRenderItemInfo<ReaderRow>) => {
+      if (item.type === "sectionHeader") {
+        const headerBookmarked = isBookmarked(item.section.id);
+
+        return (
+          <View
+            style={[
+              styles.sectionHeaderCard,
+              item.section.id === activeSection.id && styles.sectionHeaderCardActive,
+            ]}
+            onLayout={(event) => {
+              sectionHeaderOffsetByIdRef.current[item.section.id] = event.nativeEvent.layout.y;
+            }}
+          >
+            <View style={styles.sectionHeaderTop}>
+              <View style={styles.sectionHeaderText}>
+                <Text style={styles.sectionHeaderTitle}>{item.section.title}</Text>
+                <Text style={styles.sectionHeaderHebrew}>{item.section.heTitle}</Text>
+                <Text style={styles.sectionHeaderSource}>{item.section.sourceRef}</Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => toggleBookmark(item.section.id)}
+                style={[
+                  styles.sectionHeaderBookmark,
+                  headerBookmarked && styles.sectionHeaderBookmarkActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.sectionHeaderBookmarkText,
+                    headerBookmarked && styles.sectionHeaderBookmarkTextActive,
+                  ]}
+                >
+                  {headerBookmarked ? "Bookmarked" : "Bookmark"}
+                </Text>
+              </Pressable>
+            </View>
+            <Text style={styles.sectionHeaderIndex}>
+              Section {item.absoluteSectionIndex + 1} of {service.sections.length}
+            </Text>
+          </View>
+        );
+      }
+
+      return (
+        <ReaderSegment
+          segment={item.segment}
+          mode={currentReadingMode}
+          fontScale={settings.fontScale}
+          showNikud={settings.showNikud}
+        />
+      );
+    },
+    [
+      activeSection.id,
+      currentReadingMode,
+      isBookmarked,
+      service.sections.length,
+      settings.fontScale,
+      settings.showNikud,
+      styles.sectionHeaderBookmark,
+      styles.sectionHeaderBookmarkActive,
+      styles.sectionHeaderBookmarkText,
+      styles.sectionHeaderBookmarkTextActive,
+      styles.sectionHeaderCard,
+      styles.sectionHeaderCardActive,
+      styles.sectionHeaderHebrew,
+      styles.sectionHeaderIndex,
+      styles.sectionHeaderSource,
+      styles.sectionHeaderText,
+      styles.sectionHeaderTitle,
+      styles.sectionHeaderTop,
+      toggleBookmark,
+    ],
+  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            <Text style={styles.sectionHebrew}>{section.heTitle}</Text>
-            <Text style={styles.sectionRef}>{section.sourceRef}</Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => toggleBookmark(section.id)}
-            style={[styles.bookmarkButton, bookmarkActive && styles.bookmarkButtonActive]}
-          >
-            <Text style={[styles.bookmarkButtonText, bookmarkActive && styles.bookmarkButtonTextActive]}>
-              {bookmarkActive ? "Bookmarked" : "Bookmark"}
-            </Text>
-          </Pressable>
+        <View style={styles.readerControls}>
+          <Text style={styles.activeTitleLabel}>Now reading</Text>
+          <Text style={styles.activeTitleText} numberOfLines={1}>
+            {activeSection.title}
+          </Text>
+          <Text style={styles.activeTitleHebrew} numberOfLines={1}>
+            {activeSection.heTitle}
+          </Text>
+          <Text style={styles.windowLabel}>
+            Showing sections {windowStart + 1}–{windowEnd} of {service.sections.length}
+          </Text>
         </View>
 
         <ReaderToolbar
           canGoPrev={canGoPrevious}
           canGoNext={canGoNext}
           isBookmarked={bookmarkActive}
-          onGoPrev={() => goToSibling(-1)}
-          onGoNext={() => goToSibling(1)}
-          onToggleBookmark={() => toggleBookmark(section.id)}
+          onGoPrev={() => goToSiblingSection(-1)}
+          onGoNext={() => goToSiblingSection(1)}
+          onOpenSections={() => setIsJumpSheetVisible(true)}
+          onToggleBookmark={() => toggleBookmark(activeSection.id)}
         />
 
-        <View style={styles.readerControls}>
-          <Text style={styles.controlsLabel}>Language</Text>
+        <View style={styles.displayControls}>
+          <Text style={styles.controlsLabel}>Display</Text>
           <View style={styles.modeGroup}>
             {readerLanguageOptions.map((modeOption) => {
               const isActive = settings.languageMode === modeOption;
@@ -107,8 +312,8 @@ export function ReaderScreen({ navigation, route }: Props) {
                     {modeOption === "hebrew"
                       ? "HE"
                       : modeOption === "english"
-                      ? "EN"
-                      : "Both"}
+                        ? "EN"
+                        : "Both"}
                   </Text>
                 </Pressable>
               );
@@ -121,77 +326,57 @@ export function ReaderScreen({ navigation, route }: Props) {
             >
               <Text style={styles.fontScaleButtonText}>A-</Text>
             </Pressable>
-            <Text style={styles.fontScaleText}>
-              {Math.round(settings.fontScale * 100)}%
-            </Text>
+            <Text style={styles.fontScaleText}>{Math.round(settings.fontScale * 100)}%</Text>
             <Pressable
               style={styles.fontScaleButton}
               onPress={() => setFontScale(settings.fontScale + 0.1)}
             >
               <Text style={styles.fontScaleButtonText}>A+</Text>
             </Pressable>
-            <Pressable style={styles.jumpButton} onPress={jumpToSection}>
-              <Text style={styles.jumpButtonText}>Sections</Text>
-            </Pressable>
           </View>
         </View>
 
         <FlatList
-          data={section.segments}
-          keyExtractor={(item) => item.id}
+          ref={listRef}
+          data={readerRows}
+          keyExtractor={(item) => item.key}
           contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <ReaderSegment
-              segment={item}
-              mode={
-                settings.showEnglish
-                  ? settings.languageMode
-                  : settings.languageMode === "english" ||
-                    settings.languageMode === "bilingual"
-                  ? "hebrew"
-                  : settings.languageMode
-              }
-              fontScale={settings.fontScale}
-              showNikud={settings.showNikud}
-            />
-          )}
-          initialNumToRender={16}
-          maxToRenderPerBatch={20}
+          renderItem={renderReaderRow}
+          onScrollEndDrag={(event) => {
+            updateActiveSectionFromOffset(event.nativeEvent.contentOffset.y);
+          }}
+          onMomentumScrollEnd={(event) => {
+            updateActiveSectionFromOffset(event.nativeEvent.contentOffset.y);
+          }}
+          initialNumToRender={24}
+          maxToRenderPerBatch={24}
           windowSize={12}
           removeClippedSubviews
+          onScrollToIndexFailed={({ index, averageItemLength, highestMeasuredFrameIndex }) => {
+            if (scrollRetryRef.current >= 1) {
+              return;
+            }
+            scrollRetryRef.current += 1;
+            const safeTarget = Math.min(index, highestMeasuredFrameIndex + 1);
+            listRef.current?.scrollToOffset({
+              offset: Math.max(0, averageItemLength * safeTarget),
+              animated: false,
+            });
+          }}
           ListFooterComponent={<View style={styles.footerSpace} />}
         />
-
-        <View style={styles.bottomNav}>
-          <Pressable
-            accessibilityRole="button"
-            disabled={!canGoPrevious}
-            onPress={() => goToSibling(-1)}
-            style={[styles.navButton, !canGoPrevious && styles.navButtonDisabled]}
-          >
-            <Text style={styles.navButtonText}>Previous</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              Alert.alert("Section", `${fallbackIndex + 1} of ${service.sections.length}`);
-            }}
-            style={[styles.navButton, styles.navButtonCenter]}
-          >
-            <Text style={[styles.navButtonText, styles.navButtonCenterText]}>
-              {fallbackIndex + 1}
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            disabled={!canGoNext}
-            onPress={() => goToSibling(1)}
-            style={[styles.navButton, !canGoNext && styles.navButtonDisabled]}
-          >
-            <Text style={styles.navButtonText}>Next</Text>
-          </Pressable>
-        </View>
       </View>
+
+      <SectionJumpSheet
+        visible={isJumpSheetVisible}
+        sections={service.sections}
+        activeSectionId={activeSection.id}
+        onSelectSection={(targetSectionId) => {
+          setIsJumpSheetVisible(false);
+          scrollToSection(targetSectionId);
+        }}
+        onClose={() => setIsJumpSheetVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -205,58 +390,33 @@ const makeStyles = (colors: ThemeColors) =>
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.surface,
+    paddingTop: spacing.sm,
     gap: spacing.sm,
   },
-  headerText: {
-    gap: spacing.xs,
+  readerControls: {
+    gap: spacing.xxs,
   },
-  sectionTitle: {
+  activeTitleLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  activeTitleText: {
     ...typography.subheading,
     color: colors.textPrimary,
   },
-  sectionHebrew: {
-    fontSize: 21,
-    lineHeight: 28,
+  activeTitleHebrew: {
+    fontSize: 18,
+    lineHeight: 24,
     textAlign: "right",
     color: colors.hebrewText,
     writingDirection: "rtl",
   },
-  sectionRef: {
-    fontSize: 12,
+  windowLabel: {
+    ...typography.bodySmall,
     color: colors.textMuted,
   },
-  bookmarkButton: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 999,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.surfaceAlt,
-  },
-  bookmarkButtonActive: {
-    backgroundColor: colors.accentSoft,
-    borderColor: colors.accent,
-  },
-  bookmarkButtonText: {
-    color: colors.textPrimary,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  bookmarkButtonTextActive: {
-    color: colors.accent,
-  },
-  readerControls: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+  displayControls: {
     gap: spacing.sm,
   },
   controlsLabel: {
@@ -308,59 +468,72 @@ const makeStyles = (colors: ThemeColors) =>
     color: colors.textSecondary,
     minWidth: 44,
   },
-  jumpButton: {
-    marginLeft: "auto",
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.surface,
-  },
-  jumpButtonText: {
-    color: colors.textPrimary,
-    fontWeight: "600",
-  },
   listContent: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
+    paddingBottom: spacing.lg,
   },
-  footerSpace: {
-    height: spacing.xl,
-  },
-  bottomNav: {
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    gap: spacing.sm,
-  },
-  navButton: {
-    flex: 1,
-    borderRadius: 12,
-    backgroundColor: colors.accent,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: spacing.sm,
-  },
-  navButtonCenter: {
-    flex: 0.6,
-    backgroundColor: colors.surfaceAlt,
+  sectionHeaderCard: {
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    gap: spacing.xs,
   },
-  navButtonDisabled: {
-    opacity: 0.4,
+  sectionHeaderCardActive: {
+    borderColor: colors.accent,
   },
-  navButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
+  sectionHeaderTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  sectionHeaderText: {
+    flex: 1,
+    gap: spacing.xxs,
+  },
+  sectionHeaderTitle: {
+    ...typography.subheading,
+    color: colors.textPrimary,
+  },
+  sectionHeaderHebrew: {
+    fontSize: 20,
+    lineHeight: 28,
+    color: colors.hebrewText,
+    textAlign: "right",
+    writingDirection: "rtl",
+  },
+  sectionHeaderSource: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
+  },
+  sectionHeaderBookmark: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 999,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.surfaceAlt,
+  },
+  sectionHeaderBookmarkActive: {
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.accent,
+  },
+  sectionHeaderBookmarkText: {
+    color: colors.textPrimary,
+    fontSize: 12,
     fontWeight: "700",
   },
-  navButtonCenterText: {
-    color: colors.textPrimary,
+  sectionHeaderBookmarkTextActive: {
+    color: colors.accent,
+  },
+  sectionHeaderIndex: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  footerSpace: {
+    height: spacing.xxl,
   },
   });
